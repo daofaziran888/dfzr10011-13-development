@@ -12,8 +12,22 @@ router = APIRouter(prefix="/api/shard", tags=["任务分片调度"])
 
 service = ShardService()
 
-LIST_FIELDS = ["分片编号", "采集计划", "分片范围", "分配节点", "开始时间", "结束时间", "重试次数", "分片状态"]
+LIST_FIELDS = ["分片编号", "采集计划", "分片范围", "断点所属团队", "执行团队", "续采批次", "分配节点", "开始时间", "结束时间", "重试次数", "分片状态"]
 STATUSES = ["待分配", "执行中", "已完成", "执行失败"]
+
+
+@router.get("/resume-summary")
+def resume_summary() -> dict[str, Any]:
+    """断点计划归属汇总清单：由续采占用结果数据驱动，展示断点所属团队与唯一续采批次。"""
+    items = service.resume_summary()
+    return {"module": "shard", "total": len(items), "items": items}
+
+
+@router.get("/resume-todos")
+def resume_todos() -> dict[str, Any]:
+    """断点计划归属待办：其余业务入口更新断点或续采占用结果后这里同步变化。"""
+    items = service.resume_todos()
+    return {"module": "shard", "total": len(items), "items": items}
 
 
 @router.get("", response_model=PageResult[dict])

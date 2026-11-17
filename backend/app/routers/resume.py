@@ -1,4 +1,9 @@
-"""断点续采恢复接口：维护断点记录，覆盖启动恢复、放弃恢复、归档记录等动作。"""
+"""断点续采恢复接口：维护断点记录，覆盖启动续采、失败释放、重试续采、完成批次、转移归属等动作。
+
+写操作需要 payload 里的「操作团队」与断点所属团队一致；越权请求只能读取归属和处理状态。
+明细接口用 team 查询参数做同样的权限判定（中文团队名走 JSON/URL 编码，避免自定义请求头的
+Latin-1 乱码问题）。
+"""
 from __future__ import annotations
 
 from typing import Any
@@ -12,7 +17,7 @@ router = APIRouter(prefix="/api/resume", tags=["断点续采恢复"])
 
 service = ResumeService()
 
-LIST_FIELDS = ["断点编号", "采集计划", "断点位置", "已采集量", "剩余量", "恢复策略", "恢复耗时", "记录状态"]
+LIST_FIELDS = ["断点编号", "采集计划", "断点位置", "已采集量", "剩余量", "所属团队", "续采批次", "占用状态", "恢复策略", "恢复耗时", "记录状态"]
 STATUSES = ["已记录", "恢复中", "已恢复", "已放弃"]
 
 
@@ -31,9 +36,12 @@ def list_entries(
 
 
 @router.get("/{entry_id}", response_model=dict)
-def get_entry(entry_id: int) -> dict:
-    """读取单条断点记录明细；不存在时给出可读的错误说明。"""
-    entry = service.get_entry(entry_id)
+def get_entry(
+    entry_id: int,
+    team: str | None = Query(default=None, description="操作团队，用于恢复权限校验"),
+) -> dict:
+    """读取单条断点记录明细；越权团队只能读取归属和处理状态。"""
+    entry = service.get_entry(entry_id, team=team)
     if entry is None:
         raise HTTPException(status_code=404, detail=f"断点记录 {entry_id} 不存在或已归档")
     return entry
@@ -45,17 +53,19 @@ def create_entry(payload: EntryPayload) -> ActionResult:
     entry, missing = service.create_entry(payload.values)
     if missing:
         return ActionResult(ok=False, message=f"缺少必填字段：{'、'.join(missing)}")
-    return ActionResult(ok=True, message="断点记录已登记", entry=entry)
+    return ActionResult(ok=True, message="断点记录已登记，归属待办已同步到分片调度", entry=entry)
 
 
 @router.post("/{entry_id}/actions", response_model=ActionResult)
 def run_action(entry_id: int, payload: EntryPayload) -> ActionResult:
-    """对单条断点记录执行启动恢复、放弃恢复、归档记录；不允许的动作会被拦下并说明原因。"""
-    action = str(payload.values.get("action") or "").strip()
-    entry, message = service.run_action(entry_id, action)
+    """对单条断点记录执行续采动作；越权或仲裁不通过时会被拦下并说明原因。"""
+    values = dict(payload.values)
+    action = str(values.get("action") or "").strip()
+    entry, message = service.run_action(entry_id, action, values)
     if entry is None:
         return ActionResult(ok=False, message=message)
-    return ActionResult(ok=True, message=message, entry=entry)
+    readonly = bool(isinstance(entry, dict) and entry.get("只读"))
+    return ActionResult(ok=not readonly, message=message, entry=entry)
 
 
 @router.get("/export")

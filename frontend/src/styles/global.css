@@ -33,3 +33,14 @@ body { margin: 0; background: #f6f8fb; color: #1f2937; }
 .link { border: none; background: none; color: var(--brand); cursor: pointer; padding: 0; }
 .page-foot { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .error-text { color: #b42318; }
+.team-switch select { margin-left: 4px; border: 1px solid var(--border); border-radius: 4px; padding: 2px 4px; }
+.panel { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+.panel h3 { margin: 0 0 8px; font-size: 14px; }
+.panel .hint { color: var(--muted); font-size: 12px; }
+.form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.form-row label span { display: block; font-size: 12px; color: var(--muted); }
+.form-row input, .form-row select { border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+.history-list { margin: 0; padding-left: 18px; font-size: 12px; }
+.history-list li { margin-bottom: 4px; }
+.tag { display: inline-block; border-radius: 4px; padding: 1px 6px; font-size: 12px; background: #eef2ff; color: #3730a3; }
+.tag.readonly { background: #fef3c7; color: #92400e; }
